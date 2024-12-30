@@ -640,6 +640,10 @@ class FrameworkUI:
             st.markdown("#### Current Mappings")
             control_ids = reference_data.get('control_ids', '').split(';') if reference_data.get('control_ids') else []
             
+            # Initialize session state for removals if not exists
+            if 'auth_mappings_to_remove' not in st.session_state:
+                st.session_state.auth_mappings_to_remove = set()
+            
             if control_ids:
                 for control_id in control_ids:
                     if control_id.strip():  # Only process non-empty control IDs
@@ -653,12 +657,13 @@ class FrameworkUI:
                                     st.write(f"**{control_data['Control_Name']}**")
                                     st.write(control_data['Control_Description'])
                             with cols[2]:
-                                if st.checkbox("Remove", key=f"remove_{control_id}"):
-                                    if control_id not in st.session_state.as_form_data['mappings_to_remove']:
-                                        st.session_state.as_form_data['mappings_to_remove'].append(control_id)
+                                # Use unique key for each checkbox
+                                remove_key = f"remove_auth_{reference_data['framework']}_{reference_data['reference']}_{control_id}"
+                                if st.checkbox("Remove", key=remove_key):
+                                    st.session_state.auth_mappings_to_remove.add((control_id, reference_data['framework'], reference_data['reference']))
             else:
                 st.info("No control mappings found")
-            
+
             # Add new mapping section
             st.markdown("---")
             st.markdown("#### Add New Mapping")
@@ -692,21 +697,90 @@ class FrameworkUI:
             # Save button at the bottom
             st.markdown("---")
             if st.button("Save Mapping Changes", type="primary", use_container_width=True):
-                # Process mappings to remove
-                for control_id in st.session_state.as_form_data['mappings_to_remove']:
-                    db.remove_as_control_mapping(
-                        reference_data['framework'],
-                        reference_data['reference'],
-                        control_id
-                    )
+                success = True
                 
-                # Process mappings to add
-                for control_id in st.session_state.as_form_data['mappings_to_add']:
-                    db.add_as_control_mapping(
-                        reference_data['framework'],
-                        reference_data['reference'],
-                        control_id
-                    )
+                # Process removals
+                if st.session_state.auth_mappings_to_remove:
+                    for control_id, framework, reference in st.session_state.auth_mappings_to_remove:
+                        try:
+                            remove_success, message = db.remove_as_control_mapping(framework, reference, control_id)
+                            if not remove_success:
+                                st.error(f"Error removing mapping for {control_id}: {message}")
+                                success = False
+                        except Exception as e:
+                            st.error(f"Failed to remove mapping for {control_id}: {str(e)}")
+                            success = False
+                    
+                    # Clear removals after processing
+                    st.session_state.auth_mappings_to_remove = set()
                 
-                st.success("Mapping changes saved successfully")
-                st.rerun()
+                # Process additions
+                if st.session_state.as_form_data['mappings_to_add']:
+                    for control_id in st.session_state.as_form_data['mappings_to_add']:
+                        add_success, message = db.add_as_control_mapping(
+                            reference_data['framework'],
+                            reference_data['reference'],
+                            control_id
+                        )
+                        if not add_success:
+                            st.error(f"Error adding mapping for {control_id}: {message}")
+                            success = False
+                    
+                    # Clear additions after processing
+                    st.session_state.as_form_data['mappings_to_add'] = []
+                
+                if success:
+                    st.success("Mapping changes saved successfully")
+                    st.rerun()
+
+    def display_control_mappings():
+        st.header("Control Mappings")
+        
+        # Initialize session state for removals if not exists
+        if 'control_mappings_to_remove' not in st.session_state:
+            st.session_state.control_mappings_to_remove = set()
+        
+        # Get current mappings
+        current_mappings = get_current_mappings()
+        
+        # Display current mappings
+        st.subheader("Current Mappings")
+        
+        if current_mappings:
+            for mapping in current_mappings:
+                col1, col2 = st.columns([4, 1])
+                with col1:
+                    with st.expander("View Control", expanded=False):
+                        st.write("**Control Name:**", mapping.get('Control_Name', ''))
+                        st.write("**Description:**", mapping.get('Control_Description', ''))
+                with col2:
+                    # Use a unique key for each mapping's remove checkbox
+                    remove_key = f"remove_{mapping['Control_ID']}"
+                    if st.checkbox("Remove", key=remove_key):
+                        st.session_state.control_mappings_to_remove.add(mapping['Control_ID'])
+        
+        # Add new mapping section
+        st.subheader("Add New Mapping")
+        # ... existing add new mapping code ...
+        
+        # Save changes button
+        if st.button("Save Mapping Changes", type="primary", use_container_width=True):
+            success = True
+            
+            # Process removals
+            if st.session_state.control_mappings_to_remove:
+                for control_id in st.session_state.control_mappings_to_remove:
+                    try:
+                        # Remove the mapping
+                        db.remove_control_mapping(control_id)
+                        st.success(f"Successfully removed mapping for {control_id}")
+                    except Exception as e:
+                        st.error(f"Failed to remove mapping for {control_id}: {str(e)}")
+                        success = False
+                    
+                    # Clear removals after processing
+                    st.session_state.control_mappings_to_remove = set()
+                    
+                    if success:
+                        st.success("All mapping changes saved successfully!")
+                        st.rerun()

@@ -806,43 +806,39 @@ class FrameworkDatabase:
         except Exception as e:
             return False, str(e)
     
-    def remove_control_mapping(self, control_id, framework, reference):
-        """Remove a mapping for a control"""
+    def remove_control_mapping(self, control_id: str) -> bool:
+        """Remove a control mapping completely"""
         try:
             conn = self.get_connection()
             cursor = conn.cursor()
             
-            # Get existing control_ids
-            cursor.execute(
-                'SELECT control_ids FROM as_mapping WHERE framework = ? AND reference = ?',
-                (framework, reference)
-            )
-            result = cursor.fetchone()
+            # Remove the mapping from control_framework
+            cursor.execute('''
+                UPDATE control_framework 
+                SET Mapping_to_Frameworks = NULL
+                WHERE Control_ID = ?
+            ''', (control_id,))
             
-            if result and result[0]:
-                existing_ids = set(result[0].split(';'))
-                existing_ids.discard(control_id)
-                
-                if existing_ids:
-                    # Update with remaining control IDs
-                    new_control_ids = ';'.join(existing_ids)
-                    cursor.execute('''
-                        UPDATE as_mapping 
-                        SET control_ids = ?
-                        WHERE framework = ? AND reference = ?
-                    ''', (new_control_ids, framework, reference))
-                else:
-                    # Remove mapping if no controls left
-                    cursor.execute('''
-                        DELETE FROM as_mapping 
-                        WHERE framework = ? AND reference = ?
-                    ''', (framework, reference))
+            # Remove any associated mappings from as_mapping
+            cursor.execute('''
+                UPDATE as_mapping
+                SET control_ids = REPLACE(control_ids, ?, '')
+                WHERE control_ids LIKE ?
+            ''', (control_id, f'%{control_id}%'))
+            
+            # Clean up any empty or malformed control_ids
+            cursor.execute('''
+                UPDATE as_mapping
+                SET control_ids = NULL
+                WHERE control_ids IN ('', ';', ';;')
+            ''')
             
             conn.commit()
             conn.close()
-            return True, "Mapping removed successfully"
+            return True
         except Exception as e:
-            return False, str(e)
+            print(f"Error removing control mapping: {str(e)}")
+            return False
     
     def get_as_control_mappings(self, framework: str, reference: str) -> List[str]:
         """Get all control mappings for a specific reference"""
@@ -944,6 +940,25 @@ class FrameworkDatabase:
             return False, "No mappings found"
         except Exception as e:
             return False, str(e)
+    
+    def remove_mappings(self, mapping_ids):
+        """Remove multiple mappings by their IDs"""
+        try:
+            conn = self.get_connection()
+            cursor = conn.cursor()
+            
+            # Delete mappings
+            cursor.executemany(
+                "DELETE FROM control_mappings WHERE id = ?",
+                [(mapping_id,) for mapping_id in mapping_ids]
+            )
+            
+            conn.commit()
+            conn.close()
+            return True
+        except Exception as e:
+            print(f"Error removing mappings: {str(e)}")
+            return False
 
 class MappingProcessor:
     @staticmethod
