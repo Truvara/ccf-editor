@@ -6,8 +6,6 @@ A Streamlit-based application for editing and managing control frameworks with d
 
 ![image](https://github.com/user-attachments/assets/879956a1-d9e2-4916-8d0e-2e6632a4b143)
 
-
-
 ## Features
 
 - Upload and manage control frameworks via Excel files
@@ -29,11 +27,14 @@ A Streamlit-based application for editing and managing control frameworks with d
 
 ### Option 1: Using the Start Script (Recommended)
 
-1. Download and extract this repository to your computer
-
-2. Open Terminal and navigate to the extracted folder:
+1. Clone the repository:
 ```bash
-cd path/to/framework-editor-docker
+git clone https://github.com/pwnk77/ccf-editor.git
+```
+
+2. Open Terminal and navigate to the framework-editor-docker folder:
+```bash
+cd ccf-editor/framework-editor-docker
 ```
 
 3. Make the start script executable:
@@ -167,4 +168,3 @@ For issues:
 2. Verify your Excel file matches the required format
 3. Check container logs: `docker logs framework-editor`
 4. Ensure data directory permissions are correct
-
