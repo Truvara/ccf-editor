@@ -2,6 +2,12 @@
 
 A Streamlit-based application for editing and managing control frameworks with database persistence.
 
+![image](https://github.com/user-attachments/assets/499f40c6-b077-49ed-a589-7a83fcf1c6c7)
+
+![image](https://github.com/user-attachments/assets/879956a1-d9e2-4916-8d0e-2e6632a4b143)
+
+
+
 ## Features
 
 - Upload and manage control frameworks via Excel files
