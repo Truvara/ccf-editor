@@ -21,8 +21,3 @@ A web-based tool for managing, editing, and mapping control frameworks to author
 4. **Open your browser:**
    - Go to `http://localhost:8501`
 
-## Documentation
-- [Project Description](description.md)
-- [Functional Documentation](functional.md)
-- [Technical Documentation](technical.md)
-- [Deployment Guide](deploy.md)
